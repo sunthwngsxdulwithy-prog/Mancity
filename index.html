@@ -1,0 +1,2281 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manchester City - Interactive Dashboard + กระทู้ถาม-ตอบ</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --city-blue: #6CABDD;
+            --city-dark-blue: #1C2C5B;
+            --city-light-blue: #97C1E7;
+            --city-navy: #232D5B;
+            --bg-dark: #0A0E27;
+            --bg-card: #1A1F3A;
+            --text-primary: #FFFFFF;
+            --text-secondary: #B8C5D6;
+            --accent: #FFD700;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0A0E27 0%, #1a1a2e 50%, #16213e 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            right: -50%;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(108, 171, 221, 0.1) 0%, transparent 70%);
+            animation: float 20s infinite ease-in-out;
+            pointer-events: none;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            50% { transform: translate(-100px, -100px) rotate(180deg); }
+        }
+
+        .container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: rgba(26, 31, 58, 0.7);
+            backdrop-filter: blur(20px);
+            padding: 2rem 1rem;
+            box-shadow: 4px 0 30px rgba(0,0,0,0.5);
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 100;
+            border-right: 1px solid rgba(108, 171, 221, 0.2);
+        }
+
+        .logo-section {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 2px solid rgba(108, 171, 221, 0.3);
+            position: relative;
+        }
+
+        .logo-section::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 50%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--city-blue), transparent);
+        }
+
+        .logo-section img {
+            width: 90px;
+            height: 90px;
+            margin-bottom: 1rem;
+            filter: drop-shadow(0 4px 10px rgba(108, 171, 221, 0.5));
+            animation: pulse 3s infinite ease-in-out;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .logo-section h1 {
+            font-size: 1.3rem;
+            color: var(--city-blue);
+            margin-bottom: 0.3rem;
+        }
+
+        .logo-section p {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .nav-menu {
+            list-style: none;
+        }
+
+        .nav-item {
+            margin-bottom: 0.5rem;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            padding: 1rem 1.2rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            border-radius: 12px;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-link::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 3px;
+            background: var(--city-blue);
+            transform: scaleY(0);
+            transition: transform 0.3s ease;
+        }
+
+        .nav-link:hover::before, .nav-link.active::before {
+            transform: scaleY(1);
+        }
+
+        .nav-link:hover, .nav-link.active {
+            background: linear-gradient(135deg, rgba(108, 171, 221, 0.2), rgba(108, 171, 221, 0.1));
+            color: var(--city-blue);
+            transform: translateX(8px);
+            box-shadow: 0 4px 15px rgba(108, 171, 221, 0.2);
+        }
+
+        .nav-link span:first-child {
+            font-size: 1.3rem;
+            margin-right: 1rem;
+            transition: transform 0.3s ease;
+        }
+
+        .nav-link:hover span:first-child {
+            transform: scale(1.2) rotate(5deg);
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            margin-left: 280px;
+            padding: 2rem;
+        }
+
+        .page {
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .page-header {
+            margin-bottom: 2rem;
+            position: relative;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(108, 171, 221, 0.2);
+        }
+
+        .page-header h2 {
+            font-size: 2.2rem;
+            background: linear-gradient(135deg, var(--city-blue), var(--city-light-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+            font-weight: 800;
+        }
+
+        .page-header p {
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .live-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(255, 0, 0, 0.1);
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            border: 1px solid rgba(255, 0, 0, 0.3);
+        }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: #ff0000;
+            border-radius: 50%;
+            animation: livePulse 2s infinite;
+        }
+
+        @keyframes livePulse {
+            0%, 100% { 
+                opacity: 1;
+                box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7);
+            }
+            50% { 
+                opacity: 0.7;
+                box-shadow: 0 0 0 10px rgba(255, 0, 0, 0);
+            }
+        }
+
+        /* Cards Grid */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: rgba(26, 31, 58, 0.6);
+            backdrop-filter: blur(10px);
+            padding: 1.5rem;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 1px solid rgba(108, 171, 221, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--city-blue), var(--city-light-blue));
+            transform: scaleX(0);
+            transition: transform 0.4s ease;
+        }
+
+        .stat-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-10px) scale(1.02);
+            border-color: var(--city-blue);
+            box-shadow: 0 15px 40px rgba(108, 171, 221, 0.4);
+            background: rgba(26, 31, 58, 0.8);
+        }
+
+        .stat-card h3 {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+        }
+
+        .stat-card .value {
+            font-size: 2.8rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--city-blue), var(--city-light-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 0 30px rgba(108, 171, 221, 0.5);
+        }
+
+        .stat-card .label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        /* Chart Container */
+        .chart-container {
+            background: linear-gradient(135deg, rgba(26, 31, 58, 0.7), rgba(28, 44, 91, 0.5));
+            backdrop-filter: blur(10px);
+            padding: 2rem;
+            border-radius: 20px;
+            margin-bottom: 2rem;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            border: 1px solid rgba(108, 171, 221, 0.2);
+        }
+
+        .chart-container h3 {
+            margin-bottom: 1.5rem;
+            background: linear-gradient(135deg, var(--city-blue), var(--city-light-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 1.3rem;
+            font-weight: 700;
+        }
+
+        /* Table */
+        .table-container {
+            background: linear-gradient(135deg, rgba(26, 31, 58, 0.7), rgba(28, 44, 91, 0.5));
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            border: 1px solid rgba(108, 171, 221, 0.2);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: linear-gradient(135deg, var(--city-dark-blue), rgba(28, 44, 91, 0.8));
+        }
+
+        th, td {
+            padding: 1.2rem 1rem;
+            text-align: left;
+        }
+
+        th {
+            color: var(--city-light-blue);
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 1px;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid rgba(108, 171, 221, 0.1);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        tbody tr:hover {
+            background: rgba(108, 171, 221, 0.15);
+            transform: scale(1.01);
+        }
+
+        tbody tr.highlight {
+            background: linear-gradient(90deg, rgba(108, 171, 221, 0.3), rgba(108, 171, 221, 0.1));
+            border-left: 4px solid var(--city-blue);
+            font-weight: 600;
+        }
+
+        tbody tr.highlight:hover {
+            background: linear-gradient(90deg, rgba(108, 171, 221, 0.4), rgba(108, 171, 221, 0.2));
+        }
+
+        .team-cell {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .team-logo {
+            width: 30px;
+            height: 30px;
+            object-fit: contain;
+        }
+
+        /* Football Field */
+        .football-field {
+            background: 
+                repeating-linear-gradient(
+                    90deg,
+                    #2d5016 0px,
+                    #2d5016 40px,
+                    #3d6b1f 40px,
+                    #3d6b1f 80px
+                ),
+                linear-gradient(180deg, #2d5016 0%, #3d6b1f 50%, #2d5016 100%);
+            border-radius: 20px;
+            padding: 2rem;
+            position: relative;
+            min-height: 650px;
+            box-shadow: 
+                0 10px 40px rgba(0,0,0,0.5),
+                inset 0 0 50px rgba(0,0,0,0.3);
+            overflow: hidden;
+            border: 3px solid rgba(255,255,255,0.1);
+        }
+
+        .football-field::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at 50% 50%, transparent 30%, rgba(0,0,0,0.2) 100%);
+            pointer-events: none;
+        }
+
+        .field-lines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+        }
+
+        .field-lines::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: rgba(255,255,255,0.4);
+        }
+
+        .field-lines::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 50%;
+            width: 2px;
+            background: rgba(255,255,255,0.4);
+        }
+
+        .center-circle {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 140px;
+            height: 140px;
+            border: 2px solid rgba(255,255,255,0.4);
+            border-radius: 50%;
+        }
+
+        .center-circle::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 8px;
+            height: 8px;
+            background: rgba(255,255,255,0.6);
+            border-radius: 50%;
+        }
+
+        .formation {
+            position: relative;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            padding: 2rem 0;
+        }
+
+        .formation-line {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin: 1rem 0;
+        }
+
+        .player-card {
+            background: linear-gradient(135deg, rgba(26, 31, 58, 0.9), rgba(28, 44, 91, 0.8));
+            backdrop-filter: blur(10px);
+            border: 2px solid var(--city-blue);
+            border-radius: 15px;
+            padding: 1rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            min-width: 110px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .player-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(108, 171, 221, 0.1), transparent);
+            transform: rotate(45deg);
+            transition: all 0.5s ease;
+        }
+
+        .player-card:hover::before {
+            left: 100%;
+        }
+
+        .player-card:hover {
+            transform: scale(1.15) translateY(-5px);
+            border-color: var(--accent);
+            box-shadow: 0 15px 40px rgba(255, 215, 0, 0.5),
+                        0 0 30px rgba(108, 171, 221, 0.3);
+            background: linear-gradient(135deg, rgba(28, 44, 91, 1), rgba(26, 31, 58, 1));
+        }
+
+        .player-card img {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            margin-bottom: 0.5rem;
+            object-fit: cover;
+            border: 3px solid var(--city-blue);
+            background: rgba(255,255,255,0.1);
+            transition: all 0.3s ease;
+        }
+
+        .player-card:hover img {
+            border-color: var(--accent);
+            transform: scale(1.1);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+        }
+
+        .player-card .name {
+            font-size: 0.85rem;
+            font-weight: 700;
+            margin-bottom: 0.3rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .player-card .number {
+            font-size: 0.85rem;
+            color: var(--accent);
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+
+        .player-card .value {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            margin-top: 0.2rem;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, rgba(26, 31, 58, 0.95), rgba(28, 44, 91, 0.9));
+            backdrop-filter: blur(20px);
+            border-radius: 25px;
+            max-width: 900px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+            border: 1px solid rgba(108, 171, 221, 0.3);
+        }
+
+        .modal-header {
+            padding: 2rem;
+            background: linear-gradient(135deg, rgba(28, 44, 91, 0.9), rgba(26, 31, 58, 0.8));
+            border-radius: 25px 25px 0 0;
+            position: relative;
+            border-bottom: 2px solid rgba(108, 171, 221, 0.3);
+        }
+
+        .modal-header h2 {
+            background: linear-gradient(135deg, var(--city-blue), var(--city-light-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 1.8rem;
+            font-weight: 800;
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            font-size: 2rem;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: all 0.3s ease;
+            background: none;
+            border: none;
+            padding: 0.5rem;
+        }
+
+        .close-modal:hover {
+            color: var(--city-blue);
+            transform: rotate(90deg);
+        }
+
+        .modal-body {
+            padding: 2rem;
+        }
+
+        .player-profile {
+            display: grid;
+            grid-template-columns: 200px 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .player-image {
+            width: 200px;
+            height: 200px;
+            border-radius: 15px;
+            object-fit: cover;
+            border: 3px solid var(--city-blue);
+        }
+
+        .player-info h2 {
+            color: var(--city-blue);
+            margin-bottom: 1rem;
+        }
+
+        .player-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .stat-item {
+            background: var(--bg-dark);
+            padding: 1rem;
+            border-radius: 10px;
+        }
+
+        .stat-item label {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-item value {
+            font-size: 1.2rem;
+            color: var(--city-blue);
+            font-weight: bold;
+        }
+
+        /* Match Card */
+        .matches-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .match-card {
+            background: linear-gradient(135deg, rgba(26, 31, 58, 0.8), rgba(28, 44, 91, 0.6));
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 1px solid rgba(108, 171, 221, 0.2);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .match-card::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--city-blue), var(--accent));
+            transform: scaleX(0);
+            transition: transform 0.4s ease;
+        }
+
+        .match-card:hover::after {
+            transform: scaleX(1);
+        }
+
+        .match-card:hover {
+            border-color: var(--city-blue);
+            transform: translateY(-10px);
+            box-shadow: 0 20px 50px rgba(108, 171, 221, 0.4);
+            background: linear-gradient(135deg, rgba(26, 31, 58, 0.95), rgba(28, 44, 91, 0.85));
+        }
+
+        .match-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .match-teams {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin: 1.5rem 0;
+        }
+
+        .match-team {
+            text-align: center;
+            flex: 1;
+        }
+
+        .match-team img {
+            width: 70px;
+            height: 70px;
+            margin-bottom: 0.8rem;
+            filter: drop-shadow(0 4px 10px rgba(0,0,0,0.3));
+            transition: all 0.3s ease;
+        }
+
+        .match-card:hover .match-team img {
+            transform: scale(1.1);
+            filter: drop-shadow(0 6px 15px rgba(108, 171, 221, 0.5));
+        }
+
+        .match-score {
+            font-size: 2.2rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, var(--city-blue), var(--city-light-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            padding: 0 1rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                position: relative;
+                height: auto;
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .cards-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .player-profile {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .skill-bars {
+            margin-top: 2rem;
+        }
+
+        .skill-bar {
+            margin-bottom: 1rem;
+        }
+
+        .skill-bar label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-secondary);
+        }
+
+        .skill-bar-bg {
+            background: var(--bg-dark);
+            height: 10px;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .skill-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--city-blue), var(--city-light-blue));
+            transition: width 1s ease;
+        }
+
+        .timeline {
+            position: relative;
+            padding-left: 2rem;
+        }
+
+        .timeline-item {
+            margin-bottom: 1.5rem;
+            position: relative;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -2rem;
+            top: 0;
+            width: 12px;
+            height: 12px;
+            background: var(--city-blue);
+            border-radius: 50%;
+        }
+
+        .timeline-time {
+            color: var(--accent);
+            font-weight: bold;
+            margin-bottom: 0.3rem;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            margin-right: 0.5rem;
+        }
+
+        .badge-goal {
+            background: var(--accent);
+            color: var(--bg-dark);
+        }
+
+        .badge-assist {
+            background: var(--city-blue);
+            color: white;
+        }
+
+        .badge-card {
+            background: #ff4444;
+            color: white;
+        }
+
+        /* Merchandise Grid */
+        .merchandise-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 2rem;
+        }
+
+        .product-card {
+            background: linear-gradient(135deg, rgba(26, 31, 58, 0.8), rgba(28, 44, 91, 0.6));
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 1px solid rgba(108, 171, 221, 0.2);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+            position: relative;
+        }
+
+        .product-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--city-blue), var(--accent));
+            transform: scaleX(0);
+            transition: transform 0.4s ease;
+            z-index: 1;
+        }
+
+        .product-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .product-card:hover {
+            transform: translateY(-10px);
+            border-color: var(--city-blue);
+            box-shadow: 0 20px 50px rgba(108, 171, 221, 0.4);
+        }
+
+        .product-image {
+            width: 100%;
+            height: 280px;
+            object-fit: cover;
+            transition: all 0.4s ease;
+            background: linear-gradient(135deg, rgba(108, 171, 221, 0.2), rgba(28, 44, 91, 0.3));
+        }
+
+        .product-card:hover .product-image {
+            transform: scale(1.1);
+        }
+
+        .product-image-container {
+            overflow: hidden;
+            background: linear-gradient(135deg, rgba(108, 171, 221, 0.1), rgba(28, 44, 91, 0.2));
+            position: relative;
+        }
+
+        .product-stock {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: rgba(0, 255, 0, 0.2);
+            color: #00ff00;
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            border: 1px solid rgba(0, 255, 0, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .product-stock.limited {
+            background: rgba(255, 215, 0, 0.2);
+            color: var(--accent);
+            border-color: rgba(255, 215, 0, 0.3);
+        }
+
+        .product-info {
+            padding: 1.5rem;
+        }
+
+        .product-category {
+            font-size: 0.75rem;
+            color: var(--city-blue);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .product-name {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .product-description {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+            line-height: 1.5;
+        }
+
+        .product-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(108, 171, 221, 0.2);
+        }
+
+        .product-price {
+            font-size: 1.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--city-blue), var(--city-light-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .buy-button {
+            background: linear-gradient(135deg, var(--city-blue), var(--city-light-blue));
+            color: white;
+            border: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .buy-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(108, 171, 221, 0.4);
+        }
+
+        /* ====== กระทู้ถาม-ตอบ ====== */
+        .forum-container {
+            background: linear-gradient(135deg, rgba(26, 31, 58, 0.8), rgba(28, 44, 91, 0.7));
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            border: 1px solid rgba(108, 171, 221, 0.2);
+            margin-top: 2rem;
+        }
+
+        .forum-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .forum-title {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .forum-title h3 {
+            background: linear-gradient(135deg, var(--city-blue), var(--city-light-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 1.6rem;
+        }
+
+        .rank-badge {
+            background: rgba(255, 215, 0, 0.2);
+            color: var(--accent);
+            padding: 0.4rem 1rem;
+            border-radius: 30px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+        }
+
+        .forum-actions {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .new-post-btn {
+            background: linear-gradient(135deg, var(--city-blue), var(--city-light-blue));
+            color: white;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .new-post-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 20px rgba(108, 171, 221, 0.5);
+        }
+
+        .post-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .post-item {
+            background: rgba(10, 14, 39, 0.8);
+            border-radius: 16px;
+            padding: 1.5rem;
+            border: 1px solid rgba(108, 171, 221, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .post-item:hover {
+            border-color: var(--city-blue);
+            box-shadow: 0 5px 20px rgba(108, 171, 221, 0.2);
+        }
+
+        .post-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .post-author {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .author-avatar {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, var(--city-blue), var(--city-light-blue));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--bg-dark);
+            border: 2px solid var(--accent);
+        }
+
+        .author-info h4 {
+            color: white;
+            font-size: 1.2rem;
+            margin-bottom: 0.2rem;
+        }
+
+        .author-rank {
+            color: var(--accent);
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .author-rank i {
+            font-style: normal;
+            background: rgba(255,215,0,0.1);
+            padding: 0.2rem 0.5rem;
+            border-radius: 12px;
+            border: 1px solid rgba(255,215,0,0.3);
+        }
+
+        .post-date {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        .post-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 1rem;
+            word-break: break-word;
+        }
+
+        .post-content {
+            color: white;
+            font-size: 1rem;
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+            white-space: pre-wrap;
+            font-weight: 500;
+        }
+
+        .post-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            border-top: 1px solid rgba(108, 171, 221, 0.2);
+            padding-top: 1rem;
+        }
+
+        .post-stats {
+            display: flex;
+            gap: 1rem;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .post-stats span {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .delete-post-btn {
+            background: rgba(255, 68, 68, 0.2);
+            color: #ff4444;
+            border: 1px solid rgba(255, 68, 68, 0.3);
+            padding: 0.4rem 1rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .delete-post-btn:hover {
+            background: rgba(255, 68, 68, 0.3);
+            transform: scale(1.05);
+        }
+
+        .delete-post-btn.hidden {
+            display: none;
+        }
+
+        .reply-item {
+            margin-left: 2rem;
+            margin-top: 1rem;
+            padding: 1rem;
+            background: rgba(10, 14, 39, 0.5);
+            border-radius: 12px;
+            border-left: 3px solid var(--city-blue);
+        }
+
+        .reply-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+
+        .reply-author {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .reply-avatar {
+            width: 30px;
+            height: 30px;
+            background: linear-gradient(135deg, var(--city-light-blue), var(--city-blue));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            font-weight: bold;
+            color: var(--bg-dark);
+        }
+
+        .reply-content {
+            color: white;
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+        }
+
+        .delete-reply-btn {
+            background: rgba(255, 68, 68, 0.15);
+            color: #ff8888;
+            border: 1px solid rgba(255, 68, 68, 0.2);
+            padding: 0.2rem 0.6rem;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .delete-reply-btn:hover {
+            background: rgba(255, 68, 68, 0.3);
+            color: #ff4444;
+        }
+
+        .delete-reply-btn.hidden {
+            display: none;
+        }
+
+        .reply-box {
+            margin-top: 1rem;
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .reply-input {
+            flex: 1;
+            background: rgba(10, 14, 39, 0.8);
+            border: 1px solid rgba(108, 171, 221, 0.3);
+            border-radius: 10px;
+            padding: 0.8rem;
+            color: white;
+            font-size: 0.95rem;
+        }
+
+        .reply-input:focus {
+            outline: none;
+            border-color: var(--city-blue);
+        }
+
+        .reply-submit {
+            background: linear-gradient(135deg, var(--city-blue), var(--city-light-blue));
+            color: white;
+            border: none;
+            padding: 0 1.2rem;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .reply-submit:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(108, 171, 221, 0.4);
+        }
+
+        /* Modal สำหรับตั้งกระทู้ใหม่ */
+        .forum-modal {
+            max-width: 600px;
+        }
+
+        .forum-form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .forum-form-group label {
+            display: block;
+            color: var(--city-blue);
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .forum-form-group input,
+        .forum-form-group textarea {
+            width: 100%;
+            background: rgba(10, 14, 39, 0.9);
+            border: 1px solid rgba(108, 171, 221, 0.3);
+            border-radius: 10px;
+            padding: 0.8rem;
+            color: white;
+            font-size: 1rem;
+        }
+
+        .forum-form-group input:focus,
+        .forum-form-group textarea:focus {
+            outline: none;
+            border-color: var(--city-blue);
+        }
+
+        .forum-form-group textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .forum-submit-btn {
+            background: linear-gradient(135deg, var(--city-blue), var(--city-light-blue));
+            color: white;
+            border: none;
+            padding: 0.8rem 2rem;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            font-size: 1rem;
+        }
+
+        .forum-submit-btn:hover {
+            transform: scale(1.02);
+            box-shadow: 0 5px 20px rgba(108, 171, 221, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo-section">
+                <img src="https://upload.wikimedia.org/wikipedia/en/e/eb/Manchester_City_FC_badge.svg" alt="Manchester City Logo">
+                <h1>Manchester City</h1>
+                <p>Citizens Dashboard</p>
+            </div>
+            <nav>
+                <ul class="nav-menu">
+                    <li class="nav-item">
+                        <a class="nav-link active" data-page="overview">
+                            <span>📊</span>
+                            <span>Overview</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-page="standings">
+                            <span>🏆</span>
+                            <span>Premier League</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-page="squad">
+                            <span>⚽</span>
+                            <span>Squad & Formation</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-page="schedule">
+                            <span>📅</span>
+                            <span>Match Schedule</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-page="results">
+                            <span>📋</span>
+                            <span>Match Results</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-page="statistics">
+                            <span>📈</span>
+                            <span>Team Statistics</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-page="merchandise">
+                            <span>🛍️</span>
+                            <span>Club Shop</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Overview Page -->
+            <div class="page active" id="overview">
+                <div class="page-header">
+                    <h2>Overview Dashboard</h2>
+                    <p>
+                        สถิติและผลงานของ Manchester City ในฤดูกาลนี้
+                        <span class="live-indicator">
+                            <span class="live-dot"></span>
+                            LIVE DATA
+                        </span>
+                    </p>
+                </div>
+
+                <!-- Season Info -->
+                <div class="chart-container" style="margin-bottom: 2rem;">
+                    <h3>🏆 Premier League Season 2025/26</h3>
+                    <div class="player-stats" style="grid-template-columns: repeat(4, 1fr); margin-top: 1rem;">
+                        <div class="stat-item">
+                            <label>เริ่มฤดูกาล</label>
+                            <value>16 Aug 2025</value>
+                        </div>
+                        <div class="stat-item">
+                            <label>สิ้นสุดฤดูกาล</label>
+                            <value>24 May 2026</value>
+                        </div>
+                        <div class="stat-item">
+                            <label>แมตช์ที่แข่งแล้ว</label>
+                            <value>26 / 38 นัด</value>
+                        </div>
+                        <div class="stat-item">
+                            <label>แมตช์ที่เหลือ</label>
+                            <value>12 นัด</value>
+                        </div>
+                    </div>
+                    <div style="margin-top: 1.5rem; padding: 1rem; background: rgba(108, 171, 221, 0.1); border-radius: 10px; border-left: 4px solid var(--city-blue);">
+                        <p style="color: var(--text-secondary); line-height: 1.8; margin: 0;">
+                            <strong style="color: var(--city-blue);">📅 ฤดูกาล 2025/26:</strong> อันดับ 2 ตามหลังอาร์เซน่อล 4 คะแนน
+                            | <strong style="color: var(--city-blue);">👨‍💼 ผู้จัดการทีม:</strong> Pep Guardiola (ฤดูกาลที่ 10)
+                            | <strong style="color: var(--city-blue);">⚽ ดาวซัลโว:</strong> Erling Haaland (22 ประตูในลีก / 28 ประตูทุกรายการ)
+                            | <strong style="color: var(--city-blue);">🏆 ความสำเร็จ:</strong> เข้ารอบชิง Carabao Cup + ลุ้นแชมป์ 3 รายการ (PL, FA Cup, UCL)
+                        </p>
+                    </div>
+                </div>
+
+                <div class="cards-grid">
+                    <div class="stat-card" onclick="showPage('standings')">
+                        <h3>อันดับลีก</h3>
+                        <div class="value">2nd</div>
+                        <div class="label">Premier League</div>
+                    </div>
+                    <div class="stat-card" onclick="alert('คะแนนสะสม: 53 จาก 26 นัด - ตามหลังอาร์เซน่อล 4 คะแนน')">
+                        <h3>คะแนนสะสม</h3>
+                        <div class="value">53</div>
+                        <div class="label">จาก 26 นัด</div>
+                    </div>
+                    <div class="stat-card" onclick="alert('ชนะ 16 เสมอ 5 แพ้ 5')">
+                        <h3>ผลการแข่งขัน</h3>
+                        <div class="value">16-5-5</div>
+                        <div class="label">ชนะ-เสมอ-แพ้</div>
+                    </div>
+                    <div class="stat-card" onclick="alert('ทำประตู 54 เสียประตู 24')">
+                        <h3>ผลต่างประตู</h3>
+                        <div class="value">+30</div>
+                        <div class="label">54 ทำ / 24 เสีย</div>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <h3>ผลงานทีมรายนัด (10 นัดล่าสุด)</h3>
+                    <canvas id="performanceChart"></canvas>
+                </div>
+
+                <div class="chart-container">
+                    <h3>สถิติการทำประตู</h3>
+                    <canvas id="goalsChart"></canvas>
+                </div>
+
+                <div class="chart-container">
+                    <h3>นักเตะทำประตูสูงสุด</h3>
+                    <div class="player-stats" style="grid-template-columns: repeat(3, 1fr);">
+                        <div class="stat-item" style="cursor: pointer;" onclick="showPlayerDetail(10)">
+                            <img src="https://cdn.sofifa.net/players/239/085/25_120.png" style="width: 60px; height: 60px; border-radius: 50%; margin-bottom: 0.5rem; border: 2px solid var(--accent);">
+                            <label>Erling Haaland</label>
+                            <value>22 ประตู (ลีก)</value>
+                            <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.3rem;">28 ประตูทุกรายการ</div>
+                        </div>
+                        <div class="stat-item" style="cursor: pointer;" onclick="showPlayerDetail(8)">
+                            <img src="https://cdn.sofifa.net/players/218/667/25_120.png" style="width: 60px; height: 60px; border-radius: 50%; margin-bottom: 0.5rem; border: 2px solid var(--city-blue);">
+                            <label>Bernardo Silva</label>
+                            <value>6 ประตู</value>
+                        </div>
+                        <div class="stat-item" style="cursor: pointer;" onclick="showPlayerDetail(9)">
+                            <img src="https://cdn.sofifa.net/players/237/692/25_120.png" style="width: 60px; height: 60px; border-radius: 50%; margin-bottom: 0.5rem; border: 2px solid var(--city-blue);">
+                            <label>Phil Foden</label>
+                            <value>6 ประตู</value>
+                        </div>
+                    </div>
+                    <div style="margin-top: 1.5rem; padding: 1rem; background: rgba(255, 215, 0, 0.1); border-radius: 10px; text-align: center;">
+                        <p style="color: var(--text-secondary); margin: 0;">
+                            <strong style="color: var(--accent);">🅰️ จอมแอสซิสต์:</strong> Rayan Cherki - 7 แอสซิสต์
+                        </p>
+                    </div>
+                </div>
+
+                <!-- ========== กระทู้ถาม-ตอบ (อยู่หน้า Overview) ========== -->
+                <div class="forum-container">
+                    <div class="forum-header">
+                        <div class="forum-title">
+                            <h3>💬 กระทู้ถาม-ตอบ</h3>
+                            <div class="rank-badge" id="userRank">Rank: มือใหม่</div>
+                        </div>
+                        <div class="forum-actions">
+                            <button class="new-post-btn" onclick="openNewPostModal()">
+                                <span>✏️</span> ตั้งกระทู้ใหม่
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="postList" class="post-list">
+                        <!-- posts will be rendered here -->
+                    </div>
+
+                    <div style="text-align: center; color: var(--text-secondary); font-size: 0.9rem;">
+                        <span>📌 กระทู้ทั้งหมดถูกบันทึกใน localStorage (รีเฟรชไม่หาย) - ลบได้เฉพาะเจ้าของและ admin</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Premier League Standings -->
+            <div class="page" id="standings">
+                <div class="page-header">
+                    <h2>Premier League Standings</h2>
+                    <p>
+                        ตารางคะแนนพรีเมียร์ลีก 2025/26
+                        <span class="live-indicator">
+                            <span class="live-dot"></span>
+                            LIVE
+                        </span>
+                    </p>
+                </div>
+
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>อันดับ</th>
+                                <th>ทีม</th>
+                                <th>แข่ง</th>
+                                <th>ชนะ</th>
+                                <th>เสมอ</th>
+                                <th>แพ้</th>
+                                <th>ได้</th>
+                                <th>เสีย</th>
+                                <th>+/-</th>
+                                <th>คะแนน</th>
+                            </tr>
+                        </thead>
+                        <tbody id="standingsTable">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Squad & Formation -->
+            <div class="page" id="squad">
+                <div class="page-header">
+                    <h2>Squad & Formation</h2>
+                    <p>ผังการเล่นและรายชื่อนักเตะ Manchester City</p>
+                </div>
+
+                <div class="chart-container">
+                    <h3>Formation: 4-3-3</h3>
+                    <div class="football-field">
+                        <div class="field-lines">
+                            <div class="center-circle"></div>
+                        </div>
+                        <div class="formation" id="formationContainer">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Match Schedule -->
+            <div class="page" id="schedule">
+                <div class="page-header">
+                    <h2>Match Schedule</h2>
+                    <p>
+                        โปรแกรมการแข่งขันที่กำลังจะมาถึง - เหลือ 12 นัด (ฤดูกาล 2025/26)
+                        <span class="live-indicator" style="background: rgba(255, 215, 0, 0.1); border-color: rgba(255, 215, 0, 0.3);">
+                            <span class="live-dot" style="background: var(--accent);"></span>
+                            FIXTURES
+                        </span>
+                    </p>
+                </div>
+
+                <div class="cards-grid" style="margin-bottom: 2rem;">
+                    <div class="stat-card">
+                        <h3>นัดถัดไป</h3>
+                        <div class="value" style="font-size: 1.3rem;">vs Salford City</div>
+                        <div class="label">14 Feb 2026 | 22:00 (FA Cup)</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>แมตช์ที่เหลือ</h3>
+                        <div class="value">12</div>
+                        <div class="label">จาก 38 นัดในลีก</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>นัดชี้ชะตา</h3>
+                        <div class="value" style="font-size: 1.3rem;">@ Arsenal</div>
+                        <div class="label">22 Mar 2026 (⚡ Big Match)</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>ถ้วยรายการอื่น</h3>
+                        <div class="value">3+</div>
+                        <div class="label">Carabao, FA Cup, UCL</div>
+                    </div>
+                </div>
+
+                <div class="matches-grid" id="scheduleContainer">
+                </div>
+            </div>
+
+            <!-- Match Results -->
+            <div class="page" id="results">
+                <div class="page-header">
+                    <h2>Match Results</h2>
+                    <p>
+                        ผลการแข่งขัน 5 นัดล่าสุด (ฤดูกาล 2025/26)
+                        <span class="live-indicator">
+                            <span class="live-dot"></span>
+                            UPDATED
+                        </span>
+                    </p>
+                </div>
+
+                <div class="cards-grid" style="margin-bottom: 2rem;">
+                    <div class="stat-card">
+                        <h3>แมตช์ที่แข่งแล้ว</h3>
+                        <div class="value">26</div>
+                        <div class="label">จาก 38 นัดในฤดูกาล</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>ชนะ</h3>
+                        <div class="value">16</div>
+                        <div class="label">นัด (61.5%)</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>เสมอ</h3>
+                        <div class="value">5</div>
+                        <div class="label">นัด (19.2%)</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>แพ้</h3>
+                        <div class="value">5</div>
+                        <div class="label">นัด (19.2%)</div>
+                    </div>
+                </div>
+
+                <div class="matches-grid" id="resultsContainer">
+                </div>
+            </div>
+
+            <!-- Team Statistics -->
+            <div class="page" id="statistics">
+                <div class="page-header">
+                    <h2>Team Statistics</h2>
+                    <p>สถิติเชิงลึกของทีม</p>
+                </div>
+
+                <div class="cards-grid">
+                    <div class="stat-card">
+                        <h3>การครองบอล</h3>
+                        <div class="value">63%</div>
+                        <div class="label">เฉลี่ยต่อนัด</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>การยิงประตู</h3>
+                        <div class="value">18.2</div>
+                        <div class="label">ครั้ง/นัด</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>ความแม่นยำ</h3>
+                        <div class="value">88%</div>
+                        <div class="label">การส่งบอล</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Clean Sheets</h3>
+                        <div class="value">9</div>
+                        <div class="label">นัดไม่เสียประตู</div>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <h3>สถิติการเปรียบเทียบ</h3>
+                    <canvas id="statsRadar"></canvas>
+                </div>
+            </div>
+
+            <!-- Merchandise Page -->
+            <div class="page" id="merchandise">
+                <div class="page-header">
+                    <h2>Club Shop</h2>
+                    <p>
+                        สินค้าของสโมสร Manchester City
+                        <span class="live-indicator" style="background: rgba(0, 255, 0, 0.1); border-color: rgba(0, 255, 0, 0.3);">
+                            <span class="live-dot" style="background: #00ff00;"></span>
+                            AVAILABLE
+                        </span>
+                    </p>
+                </div>
+
+                <div class="merchandise-grid" id="merchandiseContainer">
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Player Detail Modal -->
+    <div class="modal" id="playerModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalPlayerName">Player Details</h2>
+                <button class="close-modal" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="playerModalBody">
+            </div>
+        </div>
+    </div>
+
+    <!-- Match Detail Modal -->
+    <div class="modal" id="matchModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalMatchTitle">Match Details</h2>
+                <button class="close-modal" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="matchModalBody">
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal สำหรับตั้งกระทู้ใหม่ -->
+    <div class="modal" id="newPostModal">
+        <div class="modal-content forum-modal">
+            <div class="modal-header">
+                <h2>ตั้งกระทู้ใหม่</h2>
+                <button class="close-modal" onclick="closeNewPostModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="forum-form-group">
+                    <label>ชื่อผู้ตั้งกระทู้</label>
+                    <input type="text" id="postAuthor" placeholder="เช่น CityFan1990" value="แฟนเรือใบ">
+                </div>
+                <div class="forum-form-group">
+                    <label>หัวข้อ</label>
+                    <input type="text" id="postTitle" placeholder="หัวข้อกระทู้">
+                </div>
+                <div class="forum-form-group">
+                    <label>เนื้อหา</label>
+                    <textarea id="postContent" placeholder="เขียนข้อความที่นี่..."></textarea>
+                </div>
+                <button class="forum-submit-btn" onclick="createNewPost()">โพสต์กระทู้</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== ข้อมูล Mock ====================
+        const standingsData = [
+            { pos: 1, team: 'Arsenal', logo: 'https://resources.premierleague.com/premierleague/badges/t3.svg', p: 26, w: 17, d: 6, l: 3, gf: 58, ga: 24, gd: 34, pts: 57 },
+            { pos: 2, team: 'Manchester City', logo: 'https://resources.premierleague.com/premierleague/badges/t43.svg', p: 26, w: 16, d: 5, l: 5, gf: 54, ga: 24, gd: 30, pts: 53, highlight: true },
+            { pos: 3, team: 'Liverpool', logo: 'https://resources.premierleague.com/premierleague/badges/t14.svg', p: 26, w: 15, d: 7, l: 4, gf: 52, ga: 28, gd: 24, pts: 52 },
+            { pos: 4, team: 'Chelsea', logo: 'https://resources.premierleague.com/premierleague/badges/t8.svg', p: 26, w: 14, d: 8, l: 4, gf: 48, ga: 30, gd: 18, pts: 50 },
+            { pos: 5, team: 'Newcastle', logo: 'https://resources.premierleague.com/premierleague/badges/t4.svg', p: 26, w: 13, d: 8, l: 5, gf: 45, ga: 32, gd: 13, pts: 47 },
+            { pos: 6, team: 'Tottenham', logo: 'https://resources.premierleague.com/premierleague/badges/t6.svg', p: 26, w: 12, d: 10, l: 4, gf: 50, ga: 34, gd: 16, pts: 46 },
+            { pos: 7, team: 'Aston Villa', logo: 'https://resources.premierleague.com/premierleague/badges/t7.svg', p: 26, w: 12, d: 7, l: 7, gf: 42, ga: 38, gd: 4, pts: 43 },
+            { pos: 8, team: 'Brighton', logo: 'https://resources.premierleague.com/premierleague/badges/t36.svg', p: 26, w: 11, d: 9, l: 6, gf: 43, ga: 37, gd: 6, pts: 42 }
+        ];
+
+        const playersData = {
+            GK: [
+                { id: 1, name: 'Ederson', number: 31, position: 'GK', age: 31, nationality: 'Brazil', img: 'https://cdn.sofifa.net/players/210/257/25_120.png', goals: 0, assists: 1, apps: 22, value: '€30M' }
+            ],
+            DEF: [
+                { id: 2, name: 'Walker', number: 2, position: 'RB', age: 34, nationality: 'England', img: 'https://cdn.sofifa.net/players/188/377/25_120.png', goals: 0, assists: 2, apps: 18, value: '€5M' },
+                { id: 3, name: 'Dias', number: 3, position: 'CB', age: 27, nationality: 'Portugal', img: 'https://cdn.sofifa.net/players/239/818/25_120.png', goals: 1, assists: 0, apps: 20, value: '€75M' },
+                { id: 4, name: 'Akanji', number: 25, position: 'CB', age: 29, nationality: 'Switzerland', img: 'https://cdn.sofifa.net/players/229/906/25_120.png', goals: 2, assists: 1, apps: 21, value: '€35M' },
+                { id: 5, name: 'Gvardiol', number: 24, position: 'LB', age: 22, nationality: 'Croatia', img: 'https://cdn.sofifa.net/players/256/630/25_120.png', goals: 4, assists: 2, apps: 23, value: '€75M' }
+            ],
+            MID: [
+                { id: 6, name: 'Rodri', number: 16, position: 'CDM', age: 28, nationality: 'Spain', img: 'https://cdn.sofifa.net/players/231/866/25_120.png', goals: 2, assists: 1, apps: 12, value: '€120M' },
+                { id: 7, name: 'De Bruyne', number: 17, position: 'CM', age: 33, nationality: 'Belgium', img: 'https://cdn.sofifa.net/players/192/985/25_120.png', goals: 3, assists: 9, apps: 15, value: '€35M' },
+                { id: 8, name: 'Bernardo Silva', number: 20, position: 'CM', age: 29, nationality: 'Portugal', img: 'https://cdn.sofifa.net/players/218/667/25_120.png', goals: 6, assists: 5, apps: 24, value: '€80M' }
+            ],
+            FWD: [
+                { id: 9, name: 'Foden', number: 47, position: 'RW', age: 24, nationality: 'England', img: 'https://cdn.sofifa.net/players/237/692/25_120.png', goals: 6, assists: 4, apps: 22, value: '€110M' },
+                { id: 10, name: 'Haaland', number: 9, position: 'ST', age: 24, nationality: 'Norway', img: 'https://cdn.sofifa.net/players/239/085/25_120.png', goals: 21, assists: 1, apps: 24, value: '€200M' },
+                { id: 11, name: 'Grealish', number: 10, position: 'LW', age: 29, nationality: 'England', img: 'https://cdn.sofifa.net/players/206/517/25_120.png', goals: 3, assists: 3, apps: 19, value: '€70M' }
+            ]
+        };
+
+        const merchandiseData = [
+            { id: 1, name: 'Home Jersey 24/25', category: 'Jerseys', price: '£75', image: 'https://shop.mancity.com/dw/image/v2/BDWJ_PRD/on/demandware.static/-/Sites-master-catalog-MAN/default/dw0e5e5c3a/images/large/701225474001_pp_01_mcfc.jpg?sw=400&sh=400', description: 'Official home kit for 2024/25 season with PUMA branding', stock: 'In Stock' },
+            { id: 2, name: 'Away Jersey 24/25', category: 'Jerseys', price: '£75', image: 'https://shop.mancity.com/dw/image/v2/BDWJ_PRD/on/demandware.static/-/Sites-master-catalog-MAN/default/dw8f0c8c5d/images/large/701225475001_pp_01_mcfc.jpg?sw=400&sh=400', description: 'Official away kit for 2024/25 season in dark design', stock: 'In Stock' },
+            { id: 3, name: 'Third Jersey 24/25', category: 'Jerseys', price: '£75', image: 'https://shop.mancity.com/dw/image/v2/BDWJ_PRD/on/demandware.static/-/Sites-master-catalog-MAN/default/dw2f4e3c3b/images/large/701225476001_pp_01_mcfc.jpg?sw=400&sh=400', description: 'Official third kit for 2024/25 season in unique colorway', stock: 'Limited Stock' },
+            { id: 4, name: 'Training Kit', category: 'Training', price: '£55', image: 'https://shop.mancity.com/dw/image/v2/BDWJ_PRD/on/demandware.static/-/Sites-master-catalog-MAN/default/dw1a2b3c4d/images/large/701234567001_pp_01_mcfc.jpg?sw=400&sh=400', description: 'Professional training wear used by the squad', stock: 'In Stock' },
+            { id: 5, name: 'Official Scarf', category: 'Accessories', price: '£20', image: 'https://shop.mancity.com/dw/image/v2/BDWJ_PRD/on/demandware.static/-/Sites-master-catalog-MAN/default/dw5e6f7g8h/images/large/701245678001_pp_01_mcfc.jpg?sw=400&sh=400', description: 'Sky blue knitted scarf with club crest', stock: 'In Stock' },
+            { id: 6, name: 'Cap & Beanie Set', category: 'Accessories', price: '£25', image: 'https://shop.mancity.com/dw/image/v2/BDWJ_PRD/on/demandware.static/-/Sites-master-catalog-MAN/default/dw9i0j1k2l/images/large/701256789001_pp_01_mcfc.jpg?sw=400&sh=400', description: 'Official headwear collection for all seasons', stock: 'In Stock' },
+            { id: 7, name: 'Football Ball', category: 'Equipment', price: '£30', image: 'https://images.puma.com/image/upload/f_auto,q_auto,b_rgb:fafafa,w_600,h_600/global/083770/01/fnd/EEA/fmt/png/Manchester-City-Prestige-Football', description: 'Official PUMA match ball replica', stock: 'In Stock' },
+            { id: 8, name: 'Backpack', category: 'Accessories', price: '£35', image: 'https://shop.mancity.com/dw/image/v2/BDWJ_PRD/on/demandware.static/-/Sites-master-catalog-MAN/default/dw3m4n5o6p/images/large/701267890001_pp_01_mcfc.jpg?sw=400&sh=400', description: 'Team branded backpack with multiple compartments', stock: 'In Stock' },
+            { id: 9, name: 'Water Bottle', category: 'Accessories', price: '£15', image: 'https://shop.mancity.com/dw/image/v2/BDWJ_PRD/on/demandware.static/-/Sites-master-catalog-MAN/default/dw7q8r9s0t/images/large/701278901001_pp_01_mcfc.jpg?sw=400&sh=400', description: 'Reusable sports bottle with club logo', stock: 'In Stock' }
+        ];
+
+        const upcomingMatches = [
+            { id: 1, date: '14 Feb 2026', time: '22:00', home: 'Manchester City', away: 'Salford City', homelogo: 'https://resources.premierleague.com/premierleague/badges/t43.svg', awaylogo: 'https://upload.wikimedia.org/wikipedia/en/d/d7/Salford_City_FC_logo.svg', venue: 'Etihad Stadium', competition: 'FA Cup Round 4' },
+            { id: 2, date: '22 Feb 2026', time: '03:00', home: 'Manchester City', away: 'Newcastle', homelogo: 'https://resources.premierleague.com/premierleague/badges/t43.svg', awaylogo: 'https://resources.premierleague.com/premierleague/badges/t4.svg', venue: 'Etihad Stadium', competition: 'Premier League' },
+            { id: 3, date: '28 Feb 2026', time: '19:30', home: 'Leeds United', away: 'Manchester City', homelogo: 'https://resources.premierleague.com/premierleague/badges/t2.svg', awaylogo: 'https://resources.premierleague.com/premierleague/badges/t43.svg', venue: 'Elland Road', competition: 'Premier League' },
+            { id: 4, date: '04 Mar 2026', time: '15:00', home: 'Manchester City', away: 'Nottingham Forest', homelogo: 'https://resources.premierleague.com/premierleague/badges/t43.svg', awaylogo: 'https://resources.premierleague.com/premierleague/badges/t17.svg', venue: 'Etihad Stadium', competition: 'Premier League' },
+            { id: 5, date: '14 Mar 2026', time: '15:00', home: 'West Ham', away: 'Manchester City', homelogo: 'https://resources.premierleague.com/premierleague/badges/t21.svg', awaylogo: 'https://resources.premierleague.com/premierleague/badges/t43.svg', venue: 'London Stadium', competition: 'Premier League' },
+            { id: 6, date: '22 Mar 2026', time: '15:00', home: 'Arsenal', away: 'Manchester City', homelogo: 'https://resources.premierleague.com/premierleague/badges/t3.svg', awaylogo: 'https://resources.premierleague.com/premierleague/badges/t43.svg', venue: 'Emirates Stadium', competition: '⚡ นัดชี้ชะตาแชมป์' },
+            { id: 7, date: '11 Apr 2026', time: '15:00', home: 'Chelsea', away: 'Manchester City', homelogo: 'https://resources.premierleague.com/premierleague/badges/t8.svg', awaylogo: 'https://resources.premierleague.com/premierleague/badges/t43.svg', venue: 'Stamford Bridge', competition: 'Premier League' },
+            { id: 8, date: '18 Apr 2026', time: '15:00', home: 'Manchester City', away: 'Arsenal', homelogo: 'https://resources.premierleague.com/premierleague/badges/t43.svg', awaylogo: 'https://resources.premierleague.com/premierleague/badges/t3.svg', venue: 'Etihad Stadium', competition: '⚡ นัดล้างตา' },
+            { id: 9, date: '24 May 2026', time: '16:00', home: 'Manchester City', away: 'Aston Villa', homelogo: 'https://resources.premierleague.com/premierleague/badges/t43.svg', awaylogo: 'https://resources.premierleague.com/premierleague/badges/t7.svg', venue: 'Etihad Stadium', competition: '🏁 นัดปิดฤดูกาล' }
+        ];
+
+        const pastMatches = [
+            { id: 1, date: '11 Feb 2026', home: 'Manchester City', away: 'Fulham', homescore: 3, awayscore: 0, homelogo: 'https://resources.premierleague.com/premierleague/badges/t43.svg', awaylogo: 'https://resources.premierleague.com/premierleague/badges/t54.svg', formation: '4-3-3', lineup: ['Ederson', 'Lewis', 'Stones', 'Dias', 'Gvardiol', 'Kovacic', 'Bernardo', 'Foden', 'Grealish', 'Haaland', 'Doku'] },
+            { id: 2, date: '08 Feb 2026', home: 'Liverpool', away: 'Manchester City', homescore: 1, awayscore: 2, homelogo: 'https://resources.premierleague.com/premierleague/badges/t14.svg', awaylogo: 'https://resources.premierleague.com/premierleague/badges/t43.svg', formation: '4-2-3-1', lineup: ['Ederson', 'Lewis', 'Stones', 'Dias', 'Gvardiol', 'Kovacic', 'Gundogan', 'Bernardo', 'Foden', 'Grealish', 'Haaland'] },
+            { id: 3, date: '04 Feb 2026', home: 'Manchester City', away: 'Newcastle', homescore: 3, awayscore: 1, homelogo: 'https://resources.premierleague.com/premierleague/badges/t43.svg', awaylogo: 'https://resources.premierleague.com/premierleague/badges/t4.svg', formation: '3-2-4-1', lineup: ['Ederson', 'Stones', 'Dias', 'Gvardiol', 'Lewis', 'Kovacic', 'Bernardo', 'Foden', 'Doku', 'Grealish', 'Haaland'], competition: 'Carabao Cup Semi-Final' },
+            { id: 4, date: '01 Feb 2026', home: 'Tottenham', away: 'Manchester City', homescore: 2, awayscore: 2, homelogo: 'https://resources.premierleague.com/premierleague/badges/t6.svg', awaylogo: 'https://resources.premierleague.com/premierleague/badges/t43.svg', formation: '4-3-3', lineup: ['Ederson', 'Lewis', 'Akanji', 'Dias', 'Gvardiol', 'Kovacic', 'Bernardo', 'Foden', 'Doku', 'Haaland', 'Grealish'] },
+            { id: 5, date: '28 Jan 2026', home: 'Manchester City', away: 'Galatasaray', homescore: 2, awayscore: 0, homelogo: 'https://resources.premierleague.com/premierleague/badges/t43.svg', awaylogo: 'https://upload.wikimedia.org/wikipedia/commons/4/43/Galatasaray_Sports_Club_Logo.png', formation: '4-2-3-1', lineup: ['Ederson', 'Lewis', 'Stones', 'Dias', 'Ake', 'Kovacic', 'Gundogan', 'Bernardo', 'Foden', 'Grealish', 'Haaland'], competition: 'Champions League' }
+        ];
+
+        // ==================== Navigation ====================
+        const navLinks = document.querySelectorAll('.nav-link');
+        const pages = document.querySelectorAll('.page');
+
+        navLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                const targetPage = link.dataset.page;
+                showPage(targetPage);
+            });
+        });
+
+        function showPage(pageId) {
+            pages.forEach(page => page.classList.remove('active'));
+            navLinks.forEach(link => link.classList.remove('active'));
+
+            document.getElementById(pageId).classList.add('active');
+            document.querySelector(`[data-page="${pageId}"]`).classList.add('active');
+        }
+
+        // ==================== Render Functions ====================
+        function renderStandings() {
+            const tbody = document.getElementById('standingsTable');
+            tbody.innerHTML = standingsData.map(team => `
+                <tr class="${team.highlight ? 'highlight' : ''}" onclick="showTeamInfo('${team.team}')">
+                    <td>${team.pos}</td>
+                    <td>
+                        <div class="team-cell">
+                            <img src="${team.logo}" alt="${team.team}" class="team-logo">
+                            <span>${team.team}</span>
+                        </div>
+                    </td>
+                    <td>${team.p}</td>
+                    <td>${team.w}</td>
+                    <td>${team.d}</td>
+                    <td>${team.l}</td>
+                    <td>${team.gf}</td>
+                    <td>${team.ga}</td>
+                    <td>${team.gd > 0 ? '+' : ''}${team.gd}</td>
+                    <td><strong>${team.pts}</strong></td>
+                </tr>
+            `).join('');
+        }
+
+        function renderFormation() {
+            const container = document.getElementById('formationContainer');
+            const formation = [ playersData.FWD, playersData.MID, playersData.DEF, playersData.GK ];
+            container.innerHTML = formation.map(line => `
+                <div class="formation-line">
+                    ${line.map(player => `
+                        <div class="player-card" onclick="showPlayerDetail(${player.id})">
+                            <img src="${player.img}" alt="${player.name}" onerror="this.src='https://ui-avatars.com/api/?name=${player.name}&background=6CABDD&color=fff'">
+                            <div class="name">${player.name}</div>
+                            <div class="number">#${player.number}</div>
+                            <div class="value">${player.value}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            `).join('');
+        }
+
+        function renderSchedule() {
+            const container = document.getElementById('scheduleContainer');
+            container.innerHTML = upcomingMatches.map(match => `
+                <div class="match-card" onclick="showMatchPreview(${match.id})">
+                    <div class="match-header"><span>${match.date}</span><span>${match.time}</span></div>
+                    <div class="match-teams">
+                        <div class="match-team"><img src="${match.homelogo}" alt="${match.home}"><div>${match.home}</div></div>
+                        <div class="match-score">VS</div>
+                        <div class="match-team"><img src="${match.awaylogo}" alt="${match.away}"><div>${match.away}</div></div>
+                    </div>
+                    <div style="text-align: center; color: var(--text-secondary); font-size: 0.85rem;">📍 ${match.venue}</div>
+                </div>
+            `).join('');
+        }
+
+        function renderResults() {
+            const container = document.getElementById('resultsContainer');
+            container.innerHTML = pastMatches.map(match => `
+                <div class="match-card" onclick="showMatchDetail(${match.id})">
+                    <div class="match-header"><span>${match.date}</span><span class="badge badge-goal">FT</span></div>
+                    <div class="match-teams">
+                        <div class="match-team"><img src="${match.homelogo}" alt="${match.home}"><div>${match.home}</div></div>
+                        <div class="match-score">${match.homescore} - ${match.awayscore}</div>
+                        <div class="match-team"><img src="${match.awaylogo}" alt="${match.away}"><div>${match.away}</div></div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function showPlayerDetail(playerId) {
+            const allPlayers = [...playersData.GK, ...playersData.DEF, ...playersData.MID, ...playersData.FWD];
+            const player = allPlayers.find(p => p.id === playerId);
+            if (!player) return;
+            const playerStats = { speed: Math.floor(Math.random()*30)+70, passing: Math.floor(Math.random()*30)+70, shooting: Math.floor(Math.random()*30)+70, dribbling: Math.floor(Math.random()*30)+70, defending: Math.floor(Math.random()*30)+60, physical: Math.floor(Math.random()*30)+65 };
+            document.getElementById('modalPlayerName').textContent = player.name;
+            document.getElementById('playerModalBody').innerHTML = `
+                <div class="player-profile">
+                    <img src="${player.img}" alt="${player.name}" class="player-image" onerror="this.src='https://ui-avatars.com/api/?name=${player.name}&background=6CABDD&color=fff&size=200'">
+                    <div class="player-info">
+                        <h2>#${player.number} ${player.name}</h2>
+                        <div class="player-stats">
+                            <div class="stat-item"><label>ตำแหน่ง</label><value>${player.position}</value></div>
+                            <div class="stat-item"><label>อายุ</label><value>${player.age} ปี</value></div>
+                            <div class="stat-item"><label>สัญชาติ</label><value>${player.nationality}</value></div>
+                            <div class="stat-item"><label>เบอร์เสื้อ</label><value>${player.number}</value></div>
+                            <div class="stat-item" style="grid-column: span 2;"><label>มูลค่าตลาด</label><value style="font-size:1.5rem;color:var(--accent);">${player.value}</value></div>
+                        </div>
+                    </div>
+                </div>
+                <h3 style="margin-top:2rem;margin-bottom:1rem;color:var(--city-blue);">Player Characteristics</h3>
+                <div class="skill-bars">${Object.entries(playerStats).map(([k,v])=>`<div class="skill-bar"><label>${k}: ${v}</label><div class="skill-bar-bg"><div class="skill-bar-fill" style="width:${v}%"></div></div></div>`).join('')}</div>
+                <h3 style="margin-top:2rem;margin-bottom:1rem;color:var(--city-blue);">Season Statistics 2024/25</h3>
+                <div class="player-stats">
+                    <div class="stat-item"><label>นัดลงเล่น</label><value>${player.apps}</value></div>
+                    <div class="stat-item"><label>ประตู</label><value>${player.goals}</value></div>
+                    <div class="stat-item"><label>แอสซิสต์</label><value>${player.assists}</value></div>
+                    <div class="stat-item"><label>ใบเหลือง</label><value>${Math.floor(Math.random()*5)}</value></div>
+                </div>
+            `;
+            document.getElementById('playerModal').classList.add('active');
+        }
+
+        function showMatchDetail(matchId) {
+            const match = pastMatches.find(m => m.id === matchId);
+            if (!match) return;
+            let formationHTML = '';
+            if (match.formation && match.lineup) {
+                formationHTML = `<h3 style="color:var(--city-blue);margin:2rem 0 1rem;">Manchester City Formation: ${match.formation}</h3><div style="background:linear-gradient(90deg,#2d5016 0%,#3d6b1f 50%,#2d5016 100%);border-radius:15px;padding:2rem;margin-bottom:2rem;"><div style="display:grid;grid-template-columns:repeat(11,1fr);gap:0.5rem;text-align:center;">${match.lineup.map(p=>`<div style="background:rgba(108,171,221,0.9);padding:0.5rem;border-radius:8px;font-size:0.75rem;font-weight:bold;">${p}</div>`).join('')}</div></div>`;
+            }
+            let timelineContent = '';
+            if (matchId===1) timelineContent = `<div class="timeline-item"><div class="timeline-time">23'</div><div><span class="badge badge-goal">⚽ GOAL</span> Haaland (Man City)</div></div><div class="timeline-item"><div class="timeline-time">38'</div><div><span class="badge badge-goal">⚽ GOAL</span> Johnson (Tottenham)</div></div><div class="timeline-item"><div class="timeline-time">56'</div><div><span class="badge badge-goal">⚽ GOAL</span> Foden (Man City)</div></div><div class="timeline-item"><div class="timeline-time">78'</div><div><span class="badge badge-goal">⚽ GOAL</span> Solanke (Tottenham)</div></div>`;
+            else if (matchId===3) timelineContent = `<div class="timeline-item"><div class="timeline-time">12'</div><div><span class="badge badge-goal">⚽ GOAL</span> Haaland (Man City)</div></div><div class="timeline-item"><div class="timeline-time">34'</div><div><span class="badge badge-goal">⚽ GOAL</span> Rashford (Man United)</div></div><div class="timeline-item"><div class="timeline-time">67'</div><div><span class="badge badge-goal">⚽ GOAL</span> Haaland (Man City)</div></div><div class="timeline-item"><div class="timeline-time">82'</div><div><span class="badge badge-goal">⚽ GOAL</span> Foden (Man City)</div></div>`;
+            else timelineContent = `<div class="timeline-item"><div class="timeline-time">Match Events</div><div>รายละเอียดเหตุการณ์การแข่งขัน</div></div>`;
+            document.getElementById('modalMatchTitle').textContent = `${match.home} vs ${match.away}`;
+            document.getElementById('matchModalBody').innerHTML = `
+                <div class="match-teams" style="margin-bottom:2rem;">
+                    <div class="match-team"><img src="${match.homelogo}" alt="${match.home}" style="width:80px;height:80px;"><h3>${match.home}</h3></div>
+                    <div class="match-score" style="font-size:3rem;">${match.homescore} - ${match.awayscore}</div>
+                    <div class="match-team"><img src="${match.awaylogo}" alt="${match.away}" style="width:80px;height:80px;"><h3>${match.away}</h3></div>
+                </div>
+                ${formationHTML}
+                <h3 style="color:var(--city-blue);margin-bottom:1rem;">Match Timeline</h3><div class="timeline">${timelineContent}</div>
+                <h3 style="color:var(--city-blue);margin:2rem 0 1rem;">Match Statistics</h3>
+                <div class="player-stats">
+                    <div class="stat-item"><label>การครองบอล</label><value>65% - 35%</value></div>
+                    <div class="stat-item"><label>การยิงประตู</label><value>16 - 8</value></div>
+                    <div class="stat-item"><label>ยิงตรงกรอบ</label><value>8 - 4</value></div>
+                    <div class="stat-item"><label>ความแม่นยำการส่งบอล</label><value>90% - 78%</value></div>
+                </div>
+            `;
+            document.getElementById('matchModal').classList.add('active');
+        }
+
+        function showMatchPreview(matchId) {
+            const match = upcomingMatches.find(m => m.id === matchId);
+            if (!match) return;
+            document.getElementById('modalMatchTitle').textContent = `${match.home} vs ${match.away} - Preview`;
+            document.getElementById('matchModalBody').innerHTML = `
+                <div class="match-teams" style="margin-bottom:2rem;"><div class="match-team"><img src="${match.homelogo}" alt="${match.home}" style="width:80px;height:80px;"><h3>${match.home}</h3></div><div class="match-score" style="font-size:2rem;">VS</div><div class="match-team"><img src="${match.awaylogo}" alt="${match.away}" style="width:80px;height:80px;"><h3>${match.away}</h3></div></div>
+                <div style="background:var(--bg-dark);padding:1.5rem;border-radius:10px;margin-bottom:2rem;"><h4 style="color:var(--city-blue);margin-bottom:0.5rem;">📅 ${match.date} | ⏰ ${match.time}</h4><p style="color:var(--text-secondary);">📍 ${match.venue}</p></div>
+                <h3 style="color:var(--city-blue);margin-bottom:1rem;">Predicted Line-up (4-3-3)</h3><p style="color:var(--text-secondary);margin-bottom:1rem;">คาดการณ์ 11 ตัวจริงของ Manchester City</p>
+                <div class="formation-line" style="justify-content:center;margin:1rem 0;">${playersData.FWD.map(p=>`<div class="player-card" style="margin:0.5rem;"><img src="${p.img}" alt="${p.name}"><div class="name">${p.name}</div><div class="number">#${p.number}</div></div>`).join('')}</div>
+                <div class="formation-line" style="justify-content:center;margin:1rem 0;">${playersData.MID.map(p=>`<div class="player-card" style="margin:0.5rem;"><img src="${p.img}" alt="${p.name}"><div class="name">${p.name}</div><div class="number">#${p.number}</div></div>`).join('')}</div>
+                <h3 style="color:var(--city-blue);margin:2rem 0 1rem;">Head to Head (5 นัดล่าสุด)</h3>
+                <div class="player-stats"><div class="stat-item"><label>Manchester City ชนะ</label><value>3 นัด</value></div><div class="stat-item"><label>เสมอ</label><value>1 นัด</value></div><div class="stat-item"><label>${match.away} ชนะ</label><value>1 นัด</value></div><div class="stat-item"><label>ประตูเฉลี่ย</label><value>3.2 ต่อนัด</value></div></div>
+            `;
+            document.getElementById('matchModal').classList.add('active');
+        }
+
+        function showTeamInfo(teamName) { alert(`ข้อมูลทีม: ${teamName}\n\nคลิกเพื่อดูข้อมูลเพิ่มเติมเกี่ยวกับทีมนี้`); }
+        function closeModal() { document.getElementById('playerModal').classList.remove('active'); document.getElementById('matchModal').classList.remove('active'); closeNewPostModal(); }
+
+        function renderMerchandise() {
+            const container = document.getElementById('merchandiseContainer');
+            container.innerHTML = merchandiseData.map(product => `
+                <div class="product-card" onclick="showProductDetail(${product.id})">
+                    <div class="product-image-container"><img src="${product.image}" alt="${product.name}" class="product-image" onerror="this.src='https://via.placeholder.com/400x400/6CABDD/FFFFFF?text=Man+City+${product.category}'"><span class="product-stock ${product.stock === 'Limited Stock' ? 'limited' : ''}">${product.stock}</span></div>
+                    <div class="product-info"><div class="product-category">${product.category}</div><h3 class="product-name">${product.name}</h3><p class="product-description">${product.description}</p><div class="product-footer"><div class="product-price">${product.price}</div><button class="buy-button" onclick="event.stopPropagation(); addToCart(${product.id})">Add to Cart</button></div></div>
+                </div>
+            `).join('');
+        }
+
+        function showProductDetail(productId) {
+            const product = merchandiseData.find(p => p.id === productId);
+            if (!product) return;
+            document.getElementById('modalMatchTitle').textContent = product.name;
+            document.getElementById('matchModalBody').innerHTML = `
+                <div style="text-align:center;margin-bottom:2rem;"><img src="${product.image}" alt="${product.name}" style="width:100%;max-width:500px;border-radius:15px;margin-bottom:1.5rem;" onerror="this.src='https://via.placeholder.com/500x500/6CABDD/FFFFFF?text=Man+City+${product.category}'"><span class="badge" style="background:${product.stock==='In Stock'?'#00ff00':'var(--accent)'};color:var(--bg-dark);padding:0.5rem 1rem;font-size:0.9rem;">${product.stock}</span></div>
+                <h3 style="color:var(--city-blue);margin-bottom:1rem;">${product.category}</h3><p style="font-size:1.1rem;color:var(--text-secondary);margin-bottom:2rem;line-height:1.8;">${product.description}</p>
+                <div class="player-stats" style="margin-bottom:2rem;"><div class="stat-item"><label>ราคา</label><value style="font-size:2rem;color:var(--accent);">${product.price}</value></div><div class="stat-item"><label>หมวดหมู่</label><value>${product.category}</value></div></div>
+                <div style="text-align:center;"><button class="buy-button" style="padding:1rem 3rem;font-size:1.1rem;" onclick="addToCart(${product.id})">🛒 Add to Cart</button></div>
+                <div style="margin-top:2rem;padding:1.5rem;background:rgba(108,171,221,0.1);border-radius:10px;border-left:4px solid var(--city-blue);"><h4 style="color:var(--city-blue);margin-bottom:0.5rem;">💡 Product Features</h4><ul style="color:var(--text-secondary);line-height:2;"><li>Official Manchester City merchandise</li><li>High-quality materials and construction</li><li>Authentic club branding and colors</li><li>Perfect for fans and collectors</li></ul></div>
+            `;
+            document.getElementById('matchModal').classList.add('active');
+        }
+
+        function addToCart(productId) {
+            const product = merchandiseData.find(p => p.id === productId);
+            alert(`✅ Added "${product.name}" to cart!\n\nPrice: ${product.price}\n\nThank you for supporting Manchester City! 💙`);
+        }
+
+        function initCharts() {
+            new Chart(document.getElementById('performanceChart'), { type:'line', data:{ labels:['15 นัดที่แล้ว','14','13','12','11','10','9','8','7','6','5','4','3','2','นัดล่าสุด'], datasets:[{ label:'คะแนน', data:[3,1,3,3,1,3,3,0,3,1,3,3,1,3,3], borderColor:'#6CABDD', backgroundColor:'rgba(108,171,221,0.1)', tension:0.4, fill:true, pointRadius:6, pointHoverRadius:8 }] }, options:{ responsive:true, maintainAspectRatio:true, plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label:ctx=>{ const labels=['แพ้','เสมอ','','ชนะ']; return labels[ctx.parsed.y]; } } } }, scales:{ y:{ beginAtZero:true, max:3, ticks:{ stepSize:1, color:'#B8C5D6', callback:value=>{ const labels=['แพ้','เสมอ','','ชนะ']; return labels[value]; } }, grid:{ color:'rgba(108,171,221,0.1)' } }, x:{ ticks:{ color:'#B8C5D6' }, grid:{ display:false } } }, onClick:(e,items)=>{ if(items.length>0) alert('คลิกเพื่อดูรายละเอียดแมตช์ในนัดนี้'); } } });
+            new Chart(document.getElementById('goalsChart'), { type:'bar', data:{ labels:['ทำประตู','เสียประตู','Clean Sheets','ไม่ทำประตู'], datasets:[{ label:'จำนวน', data:[58,28,9,4], backgroundColor:['#6CABDD','#ff6b6b','#4ecdc4','#ffe66d'] }] }, options:{ responsive:true, maintainAspectRatio:true, plugins:{ legend:{ display:false } }, scales:{ y:{ beginAtZero:true, ticks:{ color:'#B8C5D6' }, grid:{ color:'rgba(108,171,221,0.1)' } }, x:{ ticks:{ color:'#B8C5D6' }, grid:{ display:false } } } } });
+            new Chart(document.getElementById('statsRadar'), { type:'radar', data:{ labels:['การรุก','การรับ','ครองบอล','ส่งบอล','ยิงประตู','ความแม่นยำ'], datasets:[{ label:'Manchester City', data:[92,78,95,88,85,89], borderColor:'#6CABDD', backgroundColor:'rgba(108,171,221,0.2)', pointBackgroundColor:'#6CABDD', pointBorderColor:'#fff', pointHoverBackgroundColor:'#fff', pointHoverBorderColor:'#6CABDD' }] }, options:{ responsive:true, maintainAspectRatio:true, scales:{ r:{ beginAtZero:true, max:100, ticks:{ color:'#B8C5D6', stepSize:20 }, grid:{ color:'rgba(108,171,221,0.2)' }, pointLabels:{ color:'#B8C5D6', font:{ size:12 } } } }, plugins:{ legend:{ labels:{ color:'#B8C5D6' } } } } });
+        }
+
+        // ==================== ระบบกระทู้ (Forum) ====================
+        let currentUser = 'แฟนเรือใบ'; // เปลี่ยนได้ตามผู้ใช้
+        const ADMIN_USER = 'admin'; // admin username
+        let posts = [];
+
+        function loadPosts() {
+            const saved = localStorage.getItem('mancity_forum_posts');
+            if (saved) {
+                posts = JSON.parse(saved);
+            } else {
+                posts = [
+                    { id: Date.now()-100000, author: 'admin', title: 'ยินดีต้อนรับสู่กระทู้แฟนเรือใบ', content: 'มาคุยกันเรื่องทีมได้ที่นี่เลยครับ', replies: [], createdAt: Date.now()-100000 },
+                    { id: Date.now()-50000, author: 'แฟนตัวจริง', title: 'ฮาลันด์จะทำลายสถิติไหม', content: 'ตอนนี้ยิงไป 22 ลูกในลีก คิดว่าจบ season จะได้กี่ลูก?', replies: [{ author: 'เรือใบพันธุ์แท้', content: 'น่าจะ 35+ เลย', createdAt: Date.now()-30000 }], createdAt: Date.now()-50000 }
+                ];
+                localStorage.setItem('mancity_forum_posts', JSON.stringify(posts));
+            }
+        }
+
+        function savePosts() {
+            localStorage.setItem('mancity_forum_posts', JSON.stringify(posts));
+        }
+
+        function calculateUserRank(username) {
+            if (username === ADMIN_USER) return '👑 เจ้าของเว็บ';
+            let activityCount = 0;
+            posts.forEach(post => {
+                if (post.author === username) activityCount++;
+                post.replies.forEach(r => { if (r.author === username) activityCount++; });
+            });
+            if (activityCount >= 10) return '🏆 ตำนาน';
+            if (activityCount >= 5) return '⭐ ซุปเปอร์สตาร์';
+            if (activityCount >= 2) return '⚽ นักเตะตัวจริง';
+            return '🌱 มือใหม่';
+        }
+
+        function updateRankDisplay() {
+            document.getElementById('userRank').innerText = `Rank: ${calculateUserRank(currentUser)}`;
+        }
+
+        function renderPosts() {
+            const list = document.getElementById('postList');
+            if (!list) return;
+            if (posts.length === 0) {
+                list.innerHTML = '<div style="text-align:center; padding:2rem; color:var(--text-secondary);">ยังไม่มีกระทู้ เริ่มตั้งกระทู้แรกกันเลย!</div>';
+                return;
+            }
+            const sorted = [...posts].sort((a,b) => b.createdAt - a.createdAt || b.id - a.id);
+            list.innerHTML = sorted.map(post => {
+                const postDate = new Date(post.createdAt).toLocaleString('th-TH', { dateStyle:'short', timeStyle:'short' });
+                const repliesHTML = post.replies.map(r => {
+                    const replyDate = new Date(r.createdAt).toLocaleString('th-TH', { dateStyle:'short', timeStyle:'short' });
+                    const canDeleteReply = (currentUser === ADMIN_USER || r.author === currentUser);
+                    return `
+                        <div class="reply-item">
+                            <div class="reply-header">
+                                <div class="reply-author">
+                                    <div class="reply-avatar">${r.author.charAt(0)}</div>
+                                    <span style="color:white;">${r.author}</span>
+                                    <span style="color:var(--accent);font-size:0.7rem;">${calculateUserRank(r.author)}</span>
+                                </div>
+                                <div style="display:flex; align-items:center; gap:1rem;">
+                                    <span class="post-date">${replyDate}</span>
+                                    <button class="delete-reply-btn ${canDeleteReply ? '' : 'hidden'}" onclick="deleteReply(${post.id}, '${r.author}', '${r.content}', event)">🗑️ ลบ</button>
+                                </div>
+                            </div>
+                            <div class="reply-content">${r.content.replace(/</g,'&lt;')}</div>
+                        </div>
+                    `;
+                }).join('');
+
+                const canDeletePost = (currentUser === ADMIN_USER || post.author === currentUser);
+
+                return `
+                    <div class="post-item" id="post-${post.id}">
+                        <div class="post-header">
+                            <div class="post-author">
+                                <div class="author-avatar">${post.author.charAt(0)}</div>
+                                <div class="author-info">
+                                    <h4>${post.author}</h4>
+                                    <div class="author-rank"><i>${calculateUserRank(post.author)}</i></div>
+                                </div>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:1rem;">
+                                <span class="post-date">${postDate}</span>
+                                <button class="delete-post-btn ${canDeletePost ? '' : 'hidden'}" onclick="deletePost(${post.id}, event)">🗑️ ลบกระทู้</button>
+                            </div>
+                        </div>
+                        <div class="post-title">${post.title.replace(/</g,'&lt;')}</div>
+                        <div class="post-content">${post.content.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</div>
+                        <div class="post-footer">
+                            <div class="post-stats">
+                                <span>💬 ${post.replies.length} ความเห็น</span>
+                            </div>
+                            <div style="display:flex; gap:0.5rem; width:100%;" class="reply-box-container" id="reply-box-${post.id}">
+                                <input type="text" class="reply-input" id="replyInput-${post.id}" placeholder="เขียนความคิดเห็น...">
+                                <button class="reply-submit" onclick="addReply(${post.id})">ตอบ</button>
+                            </div>
+                        </div>
+                        <div class="replies-section">
+                            ${repliesHTML}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function addReply(postId) {
+            const input = document.getElementById(`replyInput-${postId}`);
+            const content = input.value.trim();
+            if (!content) return;
+            const post = posts.find(p => p.id === postId);
+            if (post) {
+                post.replies.push({ author: currentUser, content: content, createdAt: Date.now() });
+                savePosts();
+                renderPosts();
+                updateRankDisplay();
+                input.value = '';
+            }
+        }
+
+        function deleteReply(postId, author, content, event) {
+            event.stopPropagation();
+            if (currentUser !== ADMIN_USER && currentUser !== author) {
+                alert('คุณไม่มีสิทธิ์ลบ reply นี้');
+                return;
+            }
+            const post = posts.find(p => p.id === postId);
+            if (post) {
+                post.replies = post.replies.filter(r => !(r.author === author && r.content === content));
+                savePosts();
+                renderPosts();
+                updateRankDisplay();
+            }
+        }
+
+        function deletePost(postId, event) {
+            event.stopPropagation();
+            const post = posts.find(p => p.id === postId);
+            if (!post) return;
+            if (currentUser !== ADMIN_USER && currentUser !== post.author) {
+                alert('คุณไม่มีสิทธิ์ลบกระทู้นี้');
+                return;
+            }
+            if (confirm('ยืนยันการลบกระทู้?')) {
+                posts = posts.filter(p => p.id !== postId);
+                savePosts();
+                renderPosts();
+                updateRankDisplay();
+            }
+        }
+
+        function openNewPostModal() {
+            document.getElementById('newPostModal').classList.add('active');
+        }
+
+        function closeNewPostModal() {
+            document.getElementById('newPostModal').classList.remove('active');
+        }
+
+        function createNewPost() {
+            const author = document.getElementById('postAuthor').value.trim() || 'anonymous';
+            const title = document.getElementById('postTitle').value.trim();
+            const content = document.getElementById('postContent').value.trim();
+            if (!title || !content) { alert('กรุณากรอกหัวข้อและเนื้อหา'); return; }
+            const newPost = {
+                id: Date.now(),
+                author: author,
+                title: title,
+                content: content,
+                replies: [],
+                createdAt: Date.now()
+            };
+            posts.unshift(newPost);
+            savePosts();
+            renderPosts();
+            updateRankDisplay();
+            closeNewPostModal();
+            document.getElementById('postTitle').value = '';
+            document.getElementById('postContent').value = '';
+        }
+
+        // ==================== Initialize ====================
+        document.addEventListener('DOMContentLoaded', () => {
+            renderStandings();
+            renderFormation();
+            renderSchedule();
+            renderResults();
+            renderMerchandise();
+            initCharts();
+            loadPosts();
+            renderPosts();
+            updateRankDisplay();
+        });
+
+        window.onclick = function(event) {
+            const playerModal = document.getElementById('playerModal');
+            const matchModal = document.getElementById('matchModal');
+            const newPostModal = document.getElementById('newPostModal');
+            if (event.target === playerModal) closeModal();
+            if (event.target === matchModal) closeModal();
+            if (event.target === newPostModal) closeNewPostModal();
+        }
+    </script>
+</body>
+</html>
